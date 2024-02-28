@@ -72,30 +72,6 @@ extends:
             - script: eng\common\cibuild.cmd -configuration $(_BuildConfig) -prepareMachine $(_OfficialBuildArgs)
               displayName: Build and Test
 
-          - job: MacOS
-            displayName: 'MacOS'
-            pool:
-              name: Azure Pipelines
-              image: 'macOS-latest'
-              os: macos
-            steps:
-            - checkout: self
-              clean: true
-            - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
-              displayName: Build and Test
-
-          - job: Linux
-            displayName: 'Linux'
-            pool:
-              name: $(DncEngInternalBuildPool)
-              image: 1es-mariner-2-pt
-              os: linux
-            steps:
-            - checkout: self
-              clean: true
-            - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
-              displayName: Build and Test
-
     - template: /eng/common/templates-official/post-build/post-build.yml@self
       parameters:
         publishingInfraVersion: 3
