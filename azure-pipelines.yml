@@ -16,8 +16,10 @@ trigger:
     include:
     - main
 variables:
-- template: /eng/common/templates/variables/pool-providers.yml@self
+- template: /eng/common/templates-official/variables/pool-providers.yml@self
 - name: _TeamName
+  value: Roslyn
+- name: TeamName
   value: Roslyn
 resources:
   repositories:
@@ -29,18 +31,17 @@ extends:
   template: azure-pipelines/MicroBuild.1ES.Official.yml@MicroBuildTemplate
   parameters:
     sdl:
-      sourceAnalysisPool: <AgentPoolPlaceHolder>
-    pool:
-      name: AzurePipelines-EO
-      image: AzurePipelinesWindows2022compliantGPT
-      os: windows
+      sourceAnalysisPool:
+        name: $(DncEngInternalBuildPool)
+        image: 1es-windows-2022-pt
+        os: windows
     customBuildTags:
     - ES365AIMigrationTooling
     stages:
     - stage: build
       displayName: Build
       jobs:
-      - template: /eng/common/templates/jobs/jobs.yml@self
+      - template: /eng/common/templates-official/jobs/jobs.yml@self
         parameters:
           enableMicrobuild: true
           enablePublishBuildArtifacts: true
@@ -57,7 +58,8 @@ extends:
                 vmImage: 'windows-latest'
               ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
                 name: $(DncEngInternalBuildPool)
-                demands: ImageOverride -equals 1es-windows-2022
+                image: 1es-windows-2022-pt
+                os: windows
             variables:
             - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
               - group: Publish-Build-Assets
@@ -122,7 +124,7 @@ extends:
               - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
                 displayName: Build and Test
     - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-      - template: /eng/common/templates/post-build/post-build.yml@self
+      - template: /eng/common/templates-official/post-build/post-build.yml@self
         parameters:
           publishingInfraVersion: 3
           enableSymbolValidation: false
