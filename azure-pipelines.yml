@@ -21,6 +21,11 @@ variables:
   value: Roslyn
 - name: TeamName
   value: Roslyn
+- name: _BuildConfig
+  value: Release
+- name: _SignType
+  value: real
+
 resources:
   repositories:
   - repository: MicroBuildTemplate
@@ -54,77 +59,44 @@ extends:
           jobs:
           - job: Windows
             pool:
-              ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-                vmImage: 'windows-latest'
-              ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-                name: $(DncEngInternalBuildPool)
-                image: 1es-windows-2022-pt
-                os: windows
+              name: $(DncEngInternalBuildPool)
+              image: 1es-windows-2022-pt
+              os: windows
             variables:
-            - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
               - group: Publish-Build-Assets
               - name: _OfficialBuildArgs
                 value: /p:DotNetSignType=$(_SignType) /p:TeamName=$(_TeamName) /p:DotNetPublishUsingPipelines=true /p:OfficialBuildId=$(BUILD.BUILDNUMBER)
-            - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-              - name: _OfficialBuildArgs
-                value: ''
-            strategy:
-              matrix:
-                ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-                  Debug:
-                    _BuildConfig: Debug
-                    _SignType: test
-                    _BuildArgs: ''
-                Release:
-                  _BuildConfig: Release
-                  ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-                    _SignType: test
-                    _BuildArgs: ''
-                  ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-                    _SignType: real
-                    _BuildArgs: $(_OfficialBuildArgs)
             steps:
             - checkout: self
               clean: true
-            - script: eng\common\cibuild.cmd -configuration $(_BuildConfig) -prepareMachine $(_BuildArgs)
+            - script: eng\common\cibuild.cmd -configuration $(_BuildConfig) -prepareMachine $(_OfficialBuildArgs)
               displayName: Build and Test
-          - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-            - job: MacOS
-              displayName: 'MacOS'
-              pool:
-                vmImage: 'macOS-latest'
-              strategy:
-                matrix:
-                  Debug:
-                    _BuildConfig: Debug
-                    _SignType: none
-                  Release:
-                    _BuildConfig: Release
-                    _SignType: none
-              steps:
-              - checkout: self
-                clean: true
-              - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
-                displayName: Build and Test
-            - job: Linux
-              displayName: 'Linux'
-              pool:
-                vmImage: 'ubuntu-latest'
-              strategy:
-                matrix:
-                  Debug:
-                    _BuildConfig: Debug
-                    _SignType: none
-                  Release:
-                    _BuildConfig: Release
-                    _SignType: none
-              steps:
-              - checkout: self
-                clean: true
-              - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
-                displayName: Build and Test
-    - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-      - template: /eng/common/templates-official/post-build/post-build.yml@self
-        parameters:
-          publishingInfraVersion: 3
-          enableSymbolValidation: false
+
+          - job: MacOS
+            displayName: 'MacOS'
+            pool:
+              name: Azure Pipelines
+              image: 'macOS-latest'
+              os: macos
+            steps:
+            - checkout: self
+              clean: true
+            - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
+              displayName: Build and Test
+
+          - job: Linux
+            displayName: 'Linux'
+            pool:
+              name: $(DncEngInternalBuildPool)
+              image: 1es-mariner-2-pt
+              os: linux
+            steps:
+            - checkout: self
+              clean: true
+            - script: eng/common/cibuild.sh --configuration $(_BuildConfig) --prepareMachine
+              displayName: Build and Test
+
+    - template: /eng/common/templates-official/post-build/post-build.yml@self
+      parameters:
+        publishingInfraVersion: 3
+        enableSymbolValidation: false
